@@ -1,0 +1,73 @@
+---
+title: "knn"
+author: "Odo Luo"
+date: "March 6, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(dplyr)
+library(caret)
+```
+
+# Homework 1 
+
+Helpful link:
+https://rpubs.com/Mentors_Ubiqum/tunegrid_tunelength
+https://rpubs.com/njvijay/16444
+
+## E1: Load the iris dataset and select only entries with the classes iris virginica or iris
+versicolor (so we have a binary classification problem). 
+
+```{r}
+iris <- read.csv("iris.csv",header = TRUE) %>% 
+  as_tibble %>% 
+  filter(Species== "virginica" | Species == "versicolor" ) %>% 
+  mutate(id=row_number())
+
+head(iris)
+```
+
+
+## E2: Use the kNN-classes of sklearn in Python and the caret package in R with a K of 5
+and a train-test-split of 70-30 for an initial classification and calculate the accuracy
+using the test set. 
+
+Splitting data into 70/30 train/test subsets:
+```{r}
+train <- iris %>%  sample_frac(.70) 
+test <-  anti_join(iris, train,'id')
+train <- train %>% select(-id)
+test <- test %>% select(-id)
+```
+
+Train knn using caret package with k=5
+```{r}
+control <- trainControl(method="repeatedcv",repeats=7)
+knn <- train(Species~ ., data=train,method="knn",trControl=control,tuneLength=10,tuneGrid=data.frame(k=5))
+knn
+```
+Prediction
+```{r}
+test<-test %>% mutate(Species=as.factor(Species))
+prediction<- predict(knn,newdata = test)
+confusionMatrix(prediction,test$Species)
+```
+
+## E3: Use the extensive search approach to identify a good k, plot the accuracy for all k
+you tried, and explain your choice of a "good" k. 
+
+```{r}
+kFinding <- train(Species~ ., data=train,method="knn",trControl=control,tuneLength=20)
+plot(kFinding)
+```
+
+With these data a k of 9 would be a good choice in regards of accuracy because it has max accuracy. Depending on the data, the number of k must be consindered.
+
+## E4 (non-coding): Elaborate on the strengths and weaknesses of the kNN-classifier and
+give examples where you would not use it. 
+
+KNN is a lazy loading model. It advantages lie in the abitily of making real time predictions since new data can constantly be added and its simplicity, since it is easy to understand. The disadvantages are its bad perfomance wiht large data sets. It also is sensitive to outliers, therefore noisy datasets are not recommended to be used. 
