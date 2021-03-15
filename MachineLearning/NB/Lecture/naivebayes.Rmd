@@ -1,0 +1,160 @@
+---
+title: "The NaiveBayes-Classifier"
+author: "David Meyer"
+date: "11.10.2018"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+  html_notebook: default
+---
+
+```{r}
+library(tidyverse)
+library(e1071)
+```
+---
+
+# Data Management
+
+Census Data on yearly income of US citizens:
+
+```{r}
+census <- read.csv("census.csv", stringsAsFactors = TRUE)
+glimpse(census)
+```
+
+# Probability-based classification
+
+Idea for classifier based on probabilities:
+
+Compute P(y|x) for all classes of y. Choose the class with highest probability.
+
+Q: Income class for women?
+
+```{r}
+## A-priori P
+census %>% count(income) %>% mutate(p = n/sum(n))
+```
+```{r}
+## P, given sex ("A-posteriori-Prob. of Income")
+census %>% group_by(sex) %>% count(income) %>% mutate(p = n/sum(n))
+```
+
+**Note: the probability for income <= 50K does increase when the algorithm knows that gender is female ("a-posteriori probability"), compared to the *a-priori*-probabilities.**
+
+For both sexes, the algorithm would predict that the income is less than 50K (with a higher probability for women).
+
+Q: Income class for black women?
+
+```{r}
+## P, given sex and race
+census %>% group_by(sex, race) %>% count(income) %>% mutate(p = n/sum(n))
+```
+
+Same predicted class, but black women have an even higher probability for Income < 50K than white women.
+
+*Issues:*
+
+- Computation time increases rapidly with amount of predictors used
+- It is unlikely that all combinations have been observed
+- How to deal with numeric predictors?
+
+# Naïve Bayes Classifier
+
+Use Bayes Formula:
+
+$$P(\mathrm{income}|\mathrm{sex}) = \frac{P(\mathrm{sex}|\mathrm{income})P(\mathrm{income})}{P(\mathrm{sex})}$$
+
+This is computed for both income classes, given sex = Female, and then we choose the class with highest probability.
+
+Note that the denominator needs not to be computed, since it is the same for income >= 50K and income < 50K. If needed, it computes as the sum of both nominators:
+
+$$\begin{array}{rcl}
+P(\mathrm{sex} = \mathrm{Female}) &=& P(\mathrm{sex=Female}|\mathrm{income}=''\ge50K'')P(\mathrm{income}=''\ge50K'')\\ 
+&+& P(\mathrm{sex=Female}|\mathrm{income}=''<50K'')P(\mathrm{income}=''<50K'')
+\end{array}$$
+
+```{r}
+library(e1071)
+m = naiveBayes(income ~ sex, data = census)
+m
+```
+
+```{r}
+# P(Female | Y > 50K) * P(Y > 50K)
+0.15 * 0.24
+
+# P(Female | Y <= 50K) * P(Y <= 50K)
+0.39 * 0.76
+
+# P(Female)
+0.15 * 0.24 + 0.39 * 0.76
+
+# P(Y > 50K | Female)
+0.036 / 0.3324
+
+# P(Y <= 50K | Female)
+0.2964 / 0.3324
+
+predict(m, data.frame(sex = "Female"))
+predict(m, data.frame(sex = "Female"), type = "raw")
+```
+
+This extends to more than one predictor *assuming that all predictors are independent*:
+
+$$P(\mathrm{income}|\mathrm{sex, race}) = \frac{P(\mathrm{sex}|\mathrm{income})P(\mathrm{race}|\mathrm{income})P(\mathrm{income})}{P(\mathrm{sex, race})}$$
+
+
+```{r}
+m2 =naiveBayes(income ~ sex + race, data = census)
+m2
+```
+
+```{r}
+predict(m2, data.frame(sex = "Female", race = "Black"), type = "raw")
+predict(m2, data.frame(sex = "Female", race = "Black"))
+```
+
+```{r}
+0.11 * 0.388 * 0.76 ## Black/Female for <=50K
+0.049 * 0.15 * 0.24 ## Black/Female for >50K
+0.11 * 0.388 * 0.76 + 0.049 * 0.15 * 0.24 ## denominator
+0.032 / 0.0342 ## P(income <= 50K|Black, Female)
+0.001764 / 0.034 ## P(income > 50K|Black, Female)
+## --> predict income <= 50K
+```
+
+Note that the computed probabilities are not exact---the reason is, that gender is not homogeneously distributed over race, and thus the independence assumption is violated:
+
+```{r}
+census %>% group_by(race) %>% count(sex) %>% mutate(p = n/sum(n))
+```
+
+# metric predictors
+
+In case of metric predictors, NaiveBayes assumes a normal distribution with mean and standard deviation estimated from the sample data. In the formula, the conditional probabilities (e.g., $P(sex|gender$)) are then replaced with the density function.
+
+```{r}
+m = naiveBayes(income ~ sex + age, data = census)
+m
+```
+
+The first column of the ``age'' table stores the means, the second one the standard deviations for age (given Y, i.e. income).
+
+```{r}
+predict(m, data.frame(sex = "Female", age = 40), type = "raw")
+```
+
+```{r}
+a = 0.388 * dnorm(40, 36.78, 14) * 0.76 
+b = 0.15 * dnorm(40, 44.25, 10.5) * 0.24
+a / (a + b)
+b / (a + b)
+```
+
+# Exercise
+
+Using the `PimaIndiansDiabetes2` data from package `mlbench` (remove instances with missing data), predict the first 5 instances using a NaiveBayes model.
+
