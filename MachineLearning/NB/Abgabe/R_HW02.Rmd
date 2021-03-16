@@ -1,0 +1,107 @@
+---
+title: "R_HW02"
+author: "Odo Luo"
+date: "March 15, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework: Performance Assessment
+
+Use both R and Python to answer the following questions:
+
+1. Using the census data set, choose a few meaningful categorical features as predictors and Income as
+target.
+
+2. Create train- and test data using a fixed split (use 1/3 for test set).
+
+3. Fit a k-NN-model and a naive Bayes model. Tune k-NN using 10-times CV.
+
+4. Predict the performances on the test set. Create the confusion matrices and compare the two classifiers
+in terms of Accuracy, Recall and Precision.
+
+5. Create an ROC-curve for the naive Bayes model. Choose a good threshold, create new predictions
+using this threshold on the test set a
+
+
+
+# 01 & 02 & 03
+```{r}
+library(tidyverse)
+library(caret)
+
+```
+
+```{r}
+census <- read.csv("census.csv",header = TRUE) %>% 
+  as_tibble %>% 
+  mutate(id=row_number()) %>% 
+  mutate(income=as.numeric(ifelse(income==">50K",1,ifelse(income=="<=50K",0,NA)))) %>% 
+  mutate_all(function(x) ifelse(x=="?",NA,x)) %>% 
+  drop_na()
+
+head(census)
+```
+
+## NB
+
+```{r}
+library(sjmisc)
+
+nb <- census %>% 
+  select(workclass,education,marital.status,occupation,sex,id,income) %>% 
+  filter( workclass!="Without.pay" && education!="Preschool")
+cols <- c("workclass","education","marital.status","occupation","sex","income")
+nb[cols] <- lapply(nb[cols], factor)  
+
+train <- nb %>%  sample_frac(.70) 
+
+test <-  anti_join(nb, train,'id')
+train <- train %>% select(-id)
+test <- test %>% select(-id)
+
+predictors<- test[1:(length(train)-1)]
+target <- test[,ncol(train)] 
+predictors
+```
+
+
+```{r}
+model = train(income~ .,train,'naive_bayes',trControl=trainControl(method='cv',number=10))
+model
+```
+```{r}
+result = predict(model,predictors)
+head(result)
+```
+## KNN
+
+```{r}
+knn_data <- census %>% 
+  select(age,education.num,hours.per.week,income,id)
+
+knn_data$income <- as.factor(knn_data$income)
+knn_train <- knn_data %>%  sample_frac(.70) 
+
+knn_test <-  anti_join(knn_data, knn_train,'id')
+knn_train <- knn_train %>% select(-id)
+knn_test <- knn_test %>% select(-id)
+
+knn_predictors<- knn_test[1:3]
+knn_target <- knn_test[,ncol(knn_train)] 
+```
+
+```{r}
+knn_model = train(income~ ., knn_train,'knn',trControl=trainControl(method='cv',number=10))
+knn_model
+```
+```{r}
+knn_result = predict(knn_model,knn_predictors)
+head(knn_result)
+```
+
+
+
