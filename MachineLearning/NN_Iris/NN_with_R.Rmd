@@ -3,14 +3,14 @@ title: "Neural_Networks_with_R"
 author: "Odo Luo"
 date: "March 24, 2021"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
   word_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,include = TRUE)
 
 ```
 
@@ -30,6 +30,7 @@ and the target Species with the three classes setosa, versicolor, and virginica
 
 
 ```{r}
+library(knitr)
 library(datasets)
 library(dplyr)
 library(neuralnet)
@@ -79,8 +80,8 @@ getHiddenLayerVector <- function(hiddenLayerNum,neuronsNum){
 Calculating mean(accuracy) using 10fold CV:
 
 ```{r}
-hiddenLayerNum <- 2
-hiddenLayerNeurons<-5
+hiddenLayerNum =  2
+hiddenLayerNeurons=5
 
 result <- data.frame(layers=integer(),neurons=integer(),accuracy=double())
 for( layerNum in 1:hiddenLayerNum){
@@ -89,10 +90,9 @@ for( layerNum in 1:hiddenLayerNum){
     for(cv in 1:10){
       test_cv= train[folds[[cv]],]
       train_cv= train[-test_cv$id,]
-      nn= neuralnet( train_cv$train_setosa+train_versicolor+train_virginica ~Sepal.Length+Sepal.Width+Petal.Length,data=train_cv, 
+      nn= neuralnet(train_setosa+train_cv$train_versicolor+ train_cv$train_virginica ~Sepal.Length+Sepal.Width+Petal.Length,data=train_cv, 
                      hidden=getHiddenLayerVector(layerNum,neuronsNum),
                      act.fct = "logistic",linear.output = FALSE,rep=2,threshold = 0.5)
-      
       prediction <- neuralnet::compute(nn, (test_cv %>% select(-id,-train_setosa,-train_versicolor,-train_virginica)))
       prediction <- max.col(prediction$net.result) %>%  as.factor()
       prediction <- factor(prediction,levels = c(1,2,3))
@@ -125,7 +125,6 @@ nnFive= neuralnet( train$train_setosa+train_versicolor+train_virginica ~Sepal.Le
                      hidden=5,
                      act.fct = "logistic",linear.output = FALSE,rep=2,threshold = 0.5)
 plot(nnFive)
-
 ```
 
 
@@ -145,6 +144,7 @@ prediction1 <- factor(prediction1,levels = c(1,2,3))
 
 confusionMatrix(real,prediction1)
 ```
+
 ```{r}
 prediction2 <- neuralnet::compute(nnFive, (test %>% select(-Species)))
 prediction2 <- max.col(prediction2$net.result) %>%  as.factor()
