@@ -3,14 +3,14 @@ title: "Neural_Networks_with_R"
 author: "Odo Luo"
 date: "March 24, 2021"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
   word_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,include = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
@@ -62,8 +62,8 @@ Creating Folds for 10-Fold Cross Validation:
 train$Species<-as.factor(train$Species)
 train<-train %>% mutate(id=row_number()) 
 folds <- createFolds(train$Species)
-train<-cbind(train,dummy(train$Species,sep = "_"))
-train <- train %>% select(-Species)
+#train<-cbind(train,dummy(train$Species,sep = "_"))
+#train <- train %>% select(-Species)
 ```
 
 Getting vector "hidden" attribute in neuralnet:
@@ -84,19 +84,24 @@ hiddenLayerNum =  2
 hiddenLayerNeurons=5
 
 result <- data.frame(layers=integer(),neurons=integer(),accuracy=double())
+#1:2 Layer
 for( layerNum in 1:hiddenLayerNum){
+  
+  #2:5 Neurons per Layer
   for(neuronsNum in 2:hiddenLayerNeurons){
     out<-NULL
+    
+    #CV Iterration
     for(cv in 1:10){
       test_cv= train[folds[[cv]],]
       train_cv= train[-test_cv$id,]
-      nn= neuralnet(train_setosa+train_cv$train_versicolor+ train_cv$train_virginica ~Sepal.Length+Sepal.Width+Petal.Length,data=train_cv, 
+      nn= neuralnet(Species~Sepal.Length+Sepal.Width+Petal.Length,data=train_cv, 
                      hidden=getHiddenLayerVector(layerNum,neuronsNum),
                      act.fct = "logistic",linear.output = FALSE,rep=2,threshold = 0.5)
-      prediction <- neuralnet::compute(nn, (test_cv %>% select(-id,-train_setosa,-train_versicolor,-train_virginica)))
+      prediction <- neuralnet::compute(nn, (test_cv %>% select(-id,-Species)))
       prediction <- max.col(prediction$net.result) %>%  as.factor()
       prediction <- factor(prediction,levels = c(1,2,3))
-      real <- test_cv %>%  mutate(Species= ifelse(train_setosa==1,1,ifelse(train_versicolor==1,2,ifelse(train_virginica==1,3,NA))))
+      real <- test_cv %>%   mutate(Species= ifelse(Species=="setosa",1,ifelse(Species=="versicolor",2,ifelse(Species=="virginica",3,NA))))
       real<- as.factor(real[,"Species"])
       
       c<-confusionMatrix(real,prediction)
@@ -114,17 +119,20 @@ result
 Both, one hidden layer with either 4 or 5 neurons per layer show good results, so both will be visualized.
 
 ```{r}
-nnFour= neuralnet( train$train_setosa+train_versicolor+train_virginica ~Sepal.Length+Sepal.Width+Petal.Length,data=train, 
+nnFour= neuralnet( Species ~Sepal.Length+Sepal.Width+Petal.Length,data=train, 
                      hidden=4,
                      act.fct = "logistic",linear.output = FALSE,rep=2,threshold = 0.5)
-plot(nnFour)
 ```
 
 ```{r}
-nnFive= neuralnet( train$train_setosa+train_versicolor+train_virginica ~Sepal.Length+Sepal.Width+Petal.Length,data=train, 
+plot(nnFour,1)
+```
+
+```{r}
+nnFive= neuralnet( Species ~Sepal.Length+Sepal.Width+Petal.Length,data=train, 
                      hidden=5,
                      act.fct = "logistic",linear.output = FALSE,rep=2,threshold = 0.5)
-plot(nnFive)
+plot(nnFive,1)
 ```
 
 
@@ -133,7 +141,9 @@ Both, one hidden layer with either 4 or 5 neurons per layer show good results, s
 
 Real Species
 ```{r}
-real <- test %>%  mutate(Species= ifelse(Species=="setosa",1,ifelse(Species=="versicolor",2,ifelse(Species=="virginica",3,NA))))
+real <- test %>%  
+  mutate(Species= ifelse(Species=="setosa",
+                         1,ifelse(Species=="versicolor",2,ifelse(Species=="virginica",3,NA))))
 real<- as.factor(real[,"Species"])
 ```
 
