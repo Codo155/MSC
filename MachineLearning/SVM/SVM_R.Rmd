@@ -1,0 +1,112 @@
+---
+title: "SVM_R"
+author: "Odo Luo"
+date: "March 30, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Homework 4
+
+Using R and Python, train SVM regression models using the BostonHousing data (in R:
+data("BostonHousing", package = "mlbench"); in Python: from sklearn import datasets;
+datasets.load_boston()). Try the linear, one polynomial and the RBF kernel. Tune the parameters.
+Compare the models on a test set using the RMSE. Create a scatterplot with the fitted values of the
+best model against the true values.
+
+```{r}
+library(mlbench)
+library(dplyr)
+data(BostonHousing)
+data<- BostonHousing[,-4]
+summary(data)
+```
+
+## Train Test Split
+
+```{r}
+data <- data %>%  mutate(id=row_number())
+train<- sample_frac(data,0.7)
+test<- anti_join(data, train,"id")
+test <- test %>%  select(-id)
+train <- train %>%  select(-id)
+```
+
+## Tuning
+```{r}
+library(e1071)
+library(ggplot2)
+library(Metrics)
+
+range = 10 ^ (-4:4)
+obj = tune.svm(medv ~ crim+ zn +indus  + nox   + rm   +age   + dis +rad +tax+ ptratio    +  b +lstat, data=train,cost=range, gamma = range)
+print(obj$best.model)
+```
+```{r}
+obj$best.parameters
+```
+
+## Train & Prediction
+
+```{r}
+gamma<- 0.1
+cost<- 10
+
+linear <- svm(medv ~ crim+ zn +indus  + nox + rm  +age + dis +rad +tax+ ptratio + b +lstat, data=train,kernel="linear"  ,cost=cost,gamma=gamma)
+poly <- svm(medv ~ crim+ zn +indus  + nox + rm  +age + dis +rad +tax+ ptratio + b +lstat, data=train,kernel="polynomial",cost=cost,gamma=gamma)
+radial <- svm(medv ~ crim+ zn +indus  + nox + rm  +age + dis +rad +tax+ ptratio + b +lstat, data=train,kernel="radial"  ,cost=cost,gamma=gamma)
+
+test_feature <- test[,-13]
+test_target <- test[,13]
+
+linear_prediction <- predict(linear,test_feature )
+poly_prediction <- predict(poly,test_feature )
+radial_prediction <- predict(radial,test_feature )
+
+```
+
+## RSME
+
+```{r}
+library(Metrics)
+rmse(linear_prediction,test_target)
+rmse(poly_prediction,test_target)
+rmse(radial_prediction,test_target)
+```
+
+## Plots
+```{r}
+library(ggplot2)
+
+o_data <- test %>%  mutate(type="original") %>% 
+  as_tibble
+
+l_data <- test_feature %>% cbind(linear_prediction) %>%  
+  mutate(type="linear") %>%  as_tibble %>% 
+  mutate(medv=linear_prediction) %>% select(-linear_prediction)
+
+p_data <- test_feature %>% cbind(poly_prediction) %>%  
+  mutate(type="poly") %>%  as_tibble %>% 
+  mutate(medv=poly_prediction) %>% select(-poly_prediction)
+
+r_data <- test_feature %>% cbind(radial_prediction) %>%  
+  mutate(type="radial") %>%  as_tibble %>% 
+  mutate(medv=radial_prediction) %>% select(-radial_prediction)
+
+x = o_data %>% bind_rows(l_data) %>% 
+  bind_rows(p_data) %>% 
+  bind_rows(r_data)
+
+for(n in names(x)){
+  p<-ggplot(x,aes_string(x=n,y="medv",color="type")) +
+   geom_point()
+  plot(p)
+}
+
+```
+
+
+
