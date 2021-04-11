@@ -1,0 +1,135 @@
+---
+title: "Homework5_RF_R"
+author: "Odo Luo"
+date: "April 11, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 5: Random Forest 
+
+Use both R (randomForest package) and Python (sklearn module) to answer the following
+questions:
+1. Use the provided iris data set with the four features:
+  a. Sepal.Length
+  b. Sepal.Width
+  c. Petal.Length
+  d. Petal.Width
+  and only two target Species setosa and versicolor.
+2. Create train and test data sets using a fixed (stratified) split of 80-20.
+3. Find an appropriate number of trees by testing from 100 to 1000 in steps of 100 using all
+  provided features and (stratified) 10-fold cross validation.
+4. Plot the resulting errors for the different numbers of trees, interpret the results, and choose an
+  appropriate number of trees for your random forest (this might not be the model with the
+  lowest error, e. g. when the error reaches a plateau). Train the final random forest on the whole
+  training set.
+5. Use the final model to evaluate test loss. Plot the confusion matrix and ROC curve and
+  interpret them.
+6. Discuss which actions you could take and why if your model does not perform well enough.
+
+## Imports
+
+```{r message=FALSE}
+library(dplyr)
+library(caret)
+library(randomForest)
+library(ROCR)
+```
+
+## Preprocessing
+
+
+### 1 Load Data
+
+```{r}
+iris <- read.csv("iris.csv",header = TRUE) %>% 
+  as_tibble %>% 
+  filter(Species== "setosa" | Species == "versicolor" ) %>% 
+  mutate(id=row_number())
+
+head(iris)
+```
+
+### 2 Split Data 
+
+```{r}
+train <- iris %>%  sample_frac(.80) 
+test <-  anti_join(iris, train,'id')
+train <- train %>% select(-id)
+test <- test %>% select(-id)
+```
+
+
+## Tuning
+
+### 3 Finding optimal number of trees
+
+Code taken from: https://machinelearningmastery.com/tune-machine-learning-algorithms-in-r/
+
+```{r}
+customRF <- list(type = "Classification", library = "randomForest", loop = NULL)
+customRF$parameters <- data.frame(parameter = c("mtry", "ntree"), class = rep("numeric", 2), label = c("mtry", "ntree"))
+customRF$grid <- function(x, y, len = NULL, search = "grid") {}
+customRF$fit <- function(x, y, wts, param, lev, last, weights, classProbs, ...) {
+  randomForest(x, y, mtry = param$mtry, ntree=param$ntree, ...)
+}
+customRF$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+   predict(modelFit, newdata)
+customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+   predict(modelFit, newdata, type = "prob")
+customRF$sort <- function(x) x[order(x[,1]),]
+customRF$levels <- function(x) x$classes
+```
+
+
+
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=3,allowParallel = TRUE)
+tunegrid <- expand.grid(.mtry=c(4), .ntree=seq(from = 100, to = 1000, by = 100))
+set.seed(300)
+custom <- train(Species~., data=train, method=customRF, metric="Kappa", tuneGrid=tunegrid, trControl=control)
+```
+### 4 Plotting results
+
+```{r}
+plot(custom)
+```
+
+## Final Model
+
+### 5 Confusion Matrix and ROC 
+
+```{r}
+library(randomForest)
+set.seed(300)
+train$Species <- as.factor(train$Species)
+test$Species <- as.factor(test$Species)
+rf <- randomForest(Species ~ ., data = train, ntree=100)
+pred<-predict(rf,test[-5])
+```
+
+#### Confusion Matrix
+
+```{r}
+cf <- confusionMatrix(pred,test$Species)
+heatmap(cf$table)
+```
+```{r}
+cf
+```
+
+#### ROC
+```{r}
+p <- predict(rf,test[-5],type="prob")
+predobj <- prediction(p[,2],test$Species, label.ordering=c("setosa","versicolor"))
+performance <- performance(predobj,"tpr","fpr")
+
+plot(performance)
+```
+## 6 Discussion
+
+The model performs well enough. Since the performance reaches 100% accuracy indepent of number of the Trees, the lowest number of trees is taken. Higher number of trees increases complexity and evaluation time. Hence, it is a tradeof between complexity, time and performance. As letter stays the same there is no need for an increased number of trees.
+
