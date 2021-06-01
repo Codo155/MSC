@@ -1,0 +1,20 @@
+Occupancy Detection Dataset
+
+This dataset describes measurements of a room and the objective is to predict whether or not the room is occupied.
+
+There are 20,560 one-minute observations taken over the period of a few weeks. This is a classification prediction problem. There are 7 attributes including various light and climate properties of the room.
+
+The source for the data is credited to Luis Candanedo from UMONS.
+
+Below is a sample of the first 5 rows of data including the header row.
+"date","Temperature","Humidity","Light","CO2","HumidityRatio","Occupancy"
+"1","2015-02-04 17:51:00",23.18,27.272,426,721.25,0.00479298817650529,1
+"2","2015-02-04 17:51:59",23.15,27.2675,429.5,714,0.00478344094931065,1
+"3","2015-02-04 17:53:00",23.15,27.245,426,713.5,0.00477946352442199,1
+"4","2015-02-04 17:54:00",23.15,27.2,426,708.25,0.00477150882608175,1
+"5","2015-02-04 17:55:00",23.1,27.2,426,704.5,0.00475699293331518,1
+"6","2015-02-04 17:55:59",23.1,27.2,419,701,0.00475699293331518,1
+
+The data is provided in 3 files that suggest the splits that may be used for training and testing a model.
+
+Link: https://archive.ics.uci.edu/ml/datasets/Occupancy+Detection+
