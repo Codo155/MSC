@@ -1,0 +1,50 @@
+---
+title: "xts_excercise_luo"
+author: "Odo Luo"
+date: "May 28, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(quantmod)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+```
+
+# XTS Exercise 
+
+Use the quantmod package:
+1. Get the dividend payments of the company.
+2. Extract the date of the last dividend payment.
+3. Download and show Yahoo prices from 3 days before to 3 days after the last dividend payment.
+4. Compare the Close and Adjusted Price and explain their difference
+
+
+## 1. Get the dividend payments of the company.
+```{r}
+div<-getDividends("VOW.DE", return.class="ts")
+div %>% head()
+```
+
+## 2. Extract the date of the last dividend payment.
+```{r}
+end(div)
+```
+
+3. Download and show Yahoo prices from 3 days before to 3 days after the last dividend payment.
+
+```{r}
+getSymbols("VOW.DE",from=as.Date(end(div))-3, to=as.Date(end(div))+3)
+VOW.DE[,"VOW.DE.Close"] %>%  plot()
+```
+
+## 4. Compare the Close and Adjusted Price and explain their difference
+
+```{r}
+VOW.DE %>% as.data.frame() %>%  mutate(difference= VOW.DE.Close - VOW.DE.Adjusted)
+```
+
+
+The difference reprecents the dividend VW payed per share. The adjusted price is the close price substracted by that.

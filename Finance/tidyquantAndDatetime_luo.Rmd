@@ -1,0 +1,63 @@
+---
+title: "tidyquant_and_datetime_luo"
+author: "Odo Luo"
+date: "May 13, 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 2- Tidyquant and Date/Time 
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidyquant)
+```
+
+## Description 
+
+Perform the following tasks
+Use the tidyquant package:
+1. Get the dividend payments of the company.
+2. Extract the date of the last dividend payment.
+3. Download and show Yahoo prices from 3 days before to 3 days after the last dividend payment.
+4. Compare the Close and Adjusted Price and explain their difference
+
+  ** Assigned Company: VW **
+
+### 1. Get the dividend payments of the company.
+
+```{r}
+div <- tq_get("VOW.DE", get = "dividends")
+
+div %>% head()
+```
+
+### 2. Extract the date of the last dividend payment.
+
+```{r}
+ldate<-div %>% filter(date==max(date)) %>% .[["date"]]
+ldate
+```
+
+
+### 3. Download and show Yahoo prices from 3 days before to 3 days after the last dividend payment.
+
+```{r}
+stocks <- tq_get("VOW.DE", get = "stock.price", 
+                from = as.Date(ldate) - 3, 
+                to = as.Date(ldate) + 3)
+stocks %>% head()
+```
+
+
+### 4. Compare the Close and Adjusted Price and explain their difference
+
+```{r}
+stocks %>% 
+  select(symbol,date,close,adjusted) %>% 
+  mutate(difference=close-adjusted)
+```
+Der Adjusted Preis ist der Aktienwert nach Abzug der Dividende.
